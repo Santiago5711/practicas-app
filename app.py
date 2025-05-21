@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = "clave_secreta_mejorada_12345"
@@ -45,8 +46,9 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
 
-# Funciones de utilidad
+# Decoradores mejorados con wraps
 def requiere_login(f):
+    @wraps(f)
     def decorador(*args, **kwargs):
         if 'usuario' not in session:
             flash('Debes iniciar sesión primero', 'warning')
@@ -55,6 +57,7 @@ def requiere_login(f):
     return decorador
 
 def requiere_responsable(f):
+    @wraps(f)
     def decorador(*args, **kwargs):
         if not session.get('es_responsable'):
             flash('No tienes permisos para esta acción', 'error')
@@ -92,7 +95,7 @@ def logout():
     flash('Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
-# Rutas de practicantes
+# Rutas de practicantes (nombres de rutas actualizados)
 @app.route('/practicantes')
 @requiere_login
 def lista_practicantes():
@@ -102,7 +105,7 @@ def lista_practicantes():
     practicantes = query.all()
     return render_template('lista_practicantes.html', practicantes=practicantes)
 
-@app.route('/practicante/nuevo', methods=['GET', 'POST'])
+@app.route('/practicantes/nuevo', methods=['GET', 'POST'])
 @requiere_login
 @requiere_responsable
 def nuevo_practicante():
@@ -128,7 +131,7 @@ def nuevo_practicante():
     
     return render_template('form_practicante.html')
 
-@app.route('/practicante/editar/<int:id>', methods=['GET', 'POST'])
+@app.route('/practicantes/editar/<int:id>', methods=['GET', 'POST'])
 @requiere_login
 @requiere_responsable
 def editar_practicante(id):
@@ -150,7 +153,7 @@ def editar_practicante(id):
     
     return render_template('form_practicante.html', practicante=practicante)
 
-@app.route('/practicante/eliminar/<int:id>')
+@app.route('/practicantes/eliminar/<int:id>')
 @requiere_login
 @requiere_responsable
 def eliminar_practicante(id):
@@ -160,17 +163,19 @@ def eliminar_practicante(id):
     flash('Practicante eliminado correctamente', 'success')
     return redirect(url_for('lista_practicantes'))
 
-# Rutas de avances
+# Rutas de avances (actualizadas para consistencia)
 @app.route('/avances')
 @requiere_login
 def lista_avances():
     if session.get('es_responsable'):
-        avances = Avance.query.all()
+        avances = Avance.query.order_by(Avance.fecha.desc()).all()
     else:
-        avances = Avance.query.filter_by(practicante_id=session.get('practicante_id')).all()
+        avances = Avance.query.filter_by(
+            practicante_id=session.get('practicante_id')
+        ).order_by(Avance.fecha.desc()).all()
     return render_template('lista_avances.html', avances=avances)
 
-@app.route('/avance/nuevo', methods=['GET', 'POST'])
+@app.route('/avances/nuevo', methods=['GET', 'POST'])
 @requiere_login
 def nuevo_avance():
     if request.method == 'POST':
@@ -190,7 +195,7 @@ def nuevo_avance():
     
     return render_template('form_avance.html')
 
-@app.route('/avance/feedback/<int:id>', methods=['POST'])
+@app.route('/avances/feedback/<int:id>', methods=['POST'])
 @requiere_login
 @requiere_responsable
 def agregar_feedback(id):
