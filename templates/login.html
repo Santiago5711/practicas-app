@@ -1,97 +1,18 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Iniciar Sesión</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-        }
-        .login-box {
-            background: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            width: 300px;
-        }
-        h1 {
-            color: #1a73e8;
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            padding: 10px;
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 1rem;
-        }
-        button:hover {
-            background-color: #1557b0;
-        }
-        .alert {
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            text-align: center;
-        }
-        .alert-error {
-            background-color: #ffebee;
-            color: #c62828;
-            border: 1px solid #ef9a9a;
-        }
-        .alert-success {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            border: 1px solid #a5d6a7;
-        }
-        .alert-info {
-            background-color: #e3f2fd;
-            color: #1565c0;
-            border: 1px solid #90caf9;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-box">
-        <h1>Iniciar Sesión</h1>
-        
-        <!-- Bloque de mensajes flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+{% extends "base.html" %}
 
-        <!-- Formulario de login (ahora apunta a la ruta raíz) -->
-        <form action="{{ url_for('login') }}" method="POST">
-            <input type="text" name="usuario" placeholder="Usuario" required>
-            <input type="password" name="contraseña" placeholder="Contraseña" required>
-            <button type="submit">Ingresar</button>
-        </form>
-        
-        <!-- Mensaje para usuario demo (opcional) -->
-        <div style="margin-top: 20px; text-align: center; font-size: 0.9em; color: #555;">
-            <p>Usuario demo: <strong>admin</strong><br>Contraseña: <strong>admin</strong></p>
-        </div>
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 50px auto;">
+    <h2>Iniciar Sesión</h2>
+    <form method="POST" action="{{ url_for('login') }}">
+        <input type="text" name="usuario" placeholder="Usuario" required>
+        <input type="password" name="contraseña" placeholder="Contraseña" required>
+        <button type="submit" class="btn">Ingresar</button>
+    </form>
+    <div style="margin-top: 20px; text-align: center;">
+        <p>Usuario demo: <strong>admin</strong></p>
+        <p>Contraseña: <strong>admin</strong></p>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}
