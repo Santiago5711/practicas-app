@@ -68,6 +68,9 @@ def requiere_responsable(f):
 # Rutas de autenticación
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    if 'usuario' in session:
+        return redirect(url_for('lista_practicantes'))
+    
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         contraseña = request.form.get('contraseña')
@@ -89,13 +92,52 @@ def login():
     
     return render_template('login.html')
 
+@app.route('/registro', methods=['GET', 'POST'])
+def registro():
+    if 'usuario' in session:
+        return redirect(url_for('lista_practicantes'))
+
+    if request.method == 'POST':
+        usuario = request.form.get('usuario')
+        contraseña = request.form.get('contraseña')
+        nombre = request.form.get('nombre')
+        
+        if not all([usuario, contraseña, nombre]):
+            flash('Por favor complete todos los campos', 'error')
+            return redirect(url_for('registro'))
+        
+        if Practicante.query.filter_by(usuario=usuario).first():
+            flash('Este usuario ya existe', 'error')
+            return redirect(url_for('registro'))
+        
+        try:
+            nuevo_practicante = Practicante(
+                nombre=nombre,
+                programa='Nuevo',
+                fecha_ingreso=datetime.now().strftime('%Y-%m-%d'),
+                estado='Activo',
+                responsable='Por asignar',
+                usuario=usuario,
+                contraseña=contraseña,
+                es_responsable=False
+            )
+            db.session.add(nuevo_practicante)
+            db.session.commit()
+            flash('¡Registro exitoso! Por favor inicia sesión', 'success')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al registrarse: {str(e)}', 'error')
+    
+    return render_template('registro.html')
+
 @app.route('/logout')
 def logout():
     session.clear()
     flash('Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
-# Rutas de practicantes (nombres de rutas actualizados)
+# Rutas de practicantes
 @app.route('/practicantes')
 @requiere_login
 def lista_practicantes():
@@ -163,7 +205,7 @@ def eliminar_practicante(id):
     flash('Practicante eliminado correctamente', 'success')
     return redirect(url_for('lista_practicantes'))
 
-# Rutas de avances (actualizadas para consistencia)
+# Rutas de avances
 @app.route('/avances')
 @requiere_login
 def lista_avances():
