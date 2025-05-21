@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Avances{% endblock %}
+
+{% block content %}
+<h2>Avances {% if not session['es_responsable'] %}de {{ session['usuario'] }}{% endif %}</h2>
+
+{% if not session['es_responsable'] %}
+    <a href="{{ url_for('nuevo_avance') }}" class="btn">Nuevo Avance</a>
+{% endif %}
+
+{% for avance in avances %}
+<div class="card">
+    <h3>{{ avance.fecha }} - {{ avance.practicante.nombre if session['es_responsable'] }}</h3>
+    <p>{{ avance.descripcion }}</p>
+    
+    {% if avance.feedback %}
+        <div style="background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+            <strong>Feedback:</strong> {{ avance.feedback }}
+        </div>
+    {% endif %}
+    
+    {% if session['es_responsable'] and not avance.feedback %}
+        <form method="POST" action="{{ url_for('agregar_feedback', id=avance.id) }}" style="margin-top: 10px;">
+            <textarea name="feedback" placeholder="Escribe tu feedback..." required></textarea>
+            <button type="submit" class="btn">Agregar Feedback</button>
+        </form>
+    {% endif %}
+</div>
+{% else %}
+<p>No hay avances registrados</p>
+{% endfor %}
+{% endblock %}
