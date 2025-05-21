@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lista de Practicantes</title>
+</head>
+<body>
+    <h1>Practicantes</h1>
+    <a href="/registrar-practicante">Nuevo Practicante</a>
+    <table border="1">
+        <tr>
+            <th>Nombre</th>
+            <th>Programa</th>
+            <th>Estado</th>
+        </tr>
+        {% for p in practicantes %}
+        <tr>
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.programa }}</td>
+            <td>{{ p.estado }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
