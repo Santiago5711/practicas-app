@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}{{ 'Editar' if practicante else 'Nuevo' }} Practicante{% endblock %}
+
+{% block content %}
+<h2>{{ 'Editar' if practicante else 'Nuevo' }} Practicante</h2>
+
+<form method="POST" action="{{ url_for('editar_practicante', id=practicante.id) if practicante else url_for('nuevo_practicante') }}">
+    <label for="nombre">Nombre:</label>
+    <input type="text" id="nombre" name="nombre" value="{{ practicante.nombre if practicante }}" required>
+    
+    <label for="programa">Programa:</label>
+    <input type="text" id="programa" name="programa" value="{{ practicante.programa if practicante }}" required>
+    
+    <label for="fecha_ingreso">Fecha de Ingreso:</label>
+    <input type="date" id="fecha_ingreso" name="fecha_ingreso" value="{{ practicante.fecha_ingreso if practicante }}" required>
+    
+    <label for="estado">Estado:</label>
+    <select id="estado" name="estado" required>
+        <option value="Activo" {{ 'selected' if practicante and practicante.estado == 'Activo' }}>Activo</option>
+        <option value="Finalizado" {{ 'selected' if practicante and practicante.estado == 'Finalizado' }}>Finalizado</option>
+        <option value="En espera" {{ 'selected' if practicante and practicante.estado == 'En espera' }}>En espera</option>
+    </select>
+    
+    <label for="responsable">Responsable:</label>
+    <input type="text" id="responsable" name="responsable" value="{{ practicante.responsable if practicante }}" required>
+    
+    <label for="usuario">Usuario:</label>
+    <input type="text" id="usuario" name="usuario" value="{{ practicante.usuario if practicante }}" required>
+    
+    <label for="contraseña">Contraseña:</label>
+    <input type="password" id="contraseña" name="contraseña" {{ 'placeholder="Dejar en blanco para no cambiar"' if practicante else 'required' }}>
+    
+    <label>
+        <input type="checkbox" name="es_responsable" {{ 'checked' if practicante and practicante.es_responsable }}>
+        Es responsable
+    </label>
+    
+    <button type="submit" class="btn">{{ 'Actualizar' if practicante else 'Guardar' }}</button>
+    <a href="{{ url_for('lista_practicantes') }}" class="btn">Cancelar</a>
+</form>
+{% endblock %}
