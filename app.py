@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = "clave_secreta_mejorada_12345"  # Cambia esto por una clave más segura
+app.secret_key = "clave_secreta_mejorada_12345"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -16,7 +17,8 @@ class Practicante(db.Model):
     estado = db.Column(db.String(20), nullable=False)
     responsable = db.Column(db.String(100), nullable=False)
     usuario = db.Column(db.String(50), unique=True, nullable=False)
-    contraseña = db.Column(db.String(100), nullable=False)  # En producción usa hash!
+    contraseña = db.Column(db.String(100), nullable=False)
+    es_responsable = db.Column(db.Boolean, default=False)
 
 class Avance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -24,13 +26,11 @@ class Avance(db.Model):
     descripcion = db.Column(db.String(500), nullable=False)
     fecha = db.Column(db.String(10), nullable=False)
     feedback = db.Column(db.String(500))
+    practicante = db.relationship('Practicante', backref='avances')
 
-# Crear tablas (ejecutar solo una vez)
+# Crear tablas y usuario admin
 with app.app_context():
     db.create_all()
-
-# Crear usuario admin si no existe (solo para desarrollo)
-with app.app_context():
     if not Practicante.query.filter_by(usuario='admin').first():
         admin = Practicante(
             nombre='Administrador',
@@ -39,12 +39,30 @@ with app.app_context():
             estado='Activo',
             responsable='Sistema',
             usuario='admin',
-            contraseña='admin'  # En producción NUNCA hacer esto
+            contraseña='admin',
+            es_responsable=True
         )
         db.session.add(admin)
         db.session.commit()
 
-# Rutas mejoradas
+# Funciones de utilidad
+def requiere_login(f):
+    def decorador(*args, **kwargs):
+        if 'usuario' not in session:
+            flash('Debes iniciar sesión primero', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorador
+
+def requiere_responsable(f):
+    def decorador(*args, **kwargs):
+        if not session.get('es_responsable'):
+            flash('No tienes permisos para esta acción', 'error')
+            return redirect(url_for('lista_practicantes'))
+        return f(*args, **kwargs)
+    return decorador
+
+# Rutas de autenticación
 @app.route('/', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -52,63 +70,152 @@ def login():
         contraseña = request.form.get('contraseña')
         
         if not usuario or not contraseña:
-            flash('Por favor complete todos los campos', 'error')
+            flash('Complete todos los campos', 'error')
             return redirect(url_for('login'))
         
         practicante = Practicante.query.filter_by(usuario=usuario).first()
         
-        if practicante and practicante.contraseña == contraseña:  # En producción usa check_password_hash
+        if practicante and practicante.contraseña == contraseña:
             session['usuario'] = usuario
-            session['es_admin'] = (usuario == 'admin')  # Ejemplo de flag para admin
-            flash('¡Bienvenido!', 'success')
+            session['es_responsable'] = practicante.es_responsable
+            session['practicante_id'] = practicante.id if not practicante.es_responsable else None
+            flash(f'Bienvenido {practicante.nombre}', 'success')
             return redirect(url_for('lista_practicantes'))
         else:
-            flash('Usuario o contraseña incorrectos', 'error')
+            flash('Credenciales incorrectas', 'error')
     
     return render_template('login.html')
 
 @app.route('/logout')
 def logout():
     session.clear()
-    flash('Has cerrado sesión correctamente', 'info')
+    flash('Sesión cerrada correctamente', 'info')
     return redirect(url_for('login'))
 
-@app.route('/lista-practicantes')
+# Rutas de practicantes
+@app.route('/practicantes')
+@requiere_login
 def lista_practicantes():
-    if 'usuario' not in session:
-        flash('Debes iniciar sesión primero', 'warning')
-        return redirect(url_for('login'))
-    
-    practicantes = Practicante.query.all()
-    return render_template('lista_practicantes.html', 
-                         practicantes=practicantes,
-                         usuario_actual=session.get('usuario'))
+    query = Practicante.query
+    if not session.get('es_responsable'):
+        query = query.filter_by(id=session.get('practicante_id'))
+    practicantes = query.all()
+    return render_template('lista_practicantes.html', practicantes=practicantes)
 
-@app.route('/registrar-practicante', methods=['GET', 'POST'])
-def registrar_practicante():
-    if 'usuario' not in session:
-        return redirect(url_for('login'))
-    
+@app.route('/practicante/nuevo', methods=['GET', 'POST'])
+@requiere_login
+@requiere_responsable
+def nuevo_practicante():
     if request.method == 'POST':
         try:
-            nuevo_practicante = Practicante(
+            practicante = Practicante(
                 nombre=request.form.get('nombre'),
                 programa=request.form.get('programa'),
                 fecha_ingreso=request.form.get('fecha_ingreso'),
                 estado=request.form.get('estado'),
                 responsable=request.form.get('responsable'),
                 usuario=request.form.get('usuario'),
-                contraseña=request.form.get('contraseña')  # En producción usar generate_password_hash
+                contraseña=request.form.get('contraseña'),
+                es_responsable=request.form.get('es_responsable') == 'on'
             )
-            db.session.add(nuevo_practicante)
+            db.session.add(practicante)
             db.session.commit()
-            flash('Practicante registrado exitosamente!', 'success')
+            flash('Practicante registrado exitosamente', 'success')
             return redirect(url_for('lista_practicantes'))
         except Exception as e:
             db.session.rollback()
             flash(f'Error al registrar: {str(e)}', 'error')
     
-    return render_template('registro_practicante.html')
+    return render_template('form_practicante.html')
+
+@app.route('/practicante/editar/<int:id>', methods=['GET', 'POST'])
+@requiere_login
+@requiere_responsable
+def editar_practicante(id):
+    practicante = Practicante.query.get_or_404(id)
+    if request.method == 'POST':
+        try:
+            practicante.nombre = request.form.get('nombre')
+            practicante.programa = request.form.get('programa')
+            practicante.fecha_ingreso = request.form.get('fecha_ingreso')
+            practicante.estado = request.form.get('estado')
+            practicante.responsable = request.form.get('responsable')
+            practicante.es_responsable = request.form.get('es_responsable') == 'on'
+            db.session.commit()
+            flash('Practicante actualizado correctamente', 'success')
+            return redirect(url_for('lista_practicantes'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al actualizar: {str(e)}', 'error')
+    
+    return render_template('form_practicante.html', practicante=practicante)
+
+@app.route('/practicante/eliminar/<int:id>')
+@requiere_login
+@requiere_responsable
+def eliminar_practicante(id):
+    practicante = Practicante.query.get_or_404(id)
+    db.session.delete(practicante)
+    db.session.commit()
+    flash('Practicante eliminado correctamente', 'success')
+    return redirect(url_for('lista_practicantes'))
+
+# Rutas de avances
+@app.route('/avances')
+@requiere_login
+def lista_avances():
+    if session.get('es_responsable'):
+        avances = Avance.query.all()
+    else:
+        avances = Avance.query.filter_by(practicante_id=session.get('practicante_id')).all()
+    return render_template('lista_avances.html', avances=avances)
+
+@app.route('/avance/nuevo', methods=['GET', 'POST'])
+@requiere_login
+def nuevo_avance():
+    if request.method == 'POST':
+        try:
+            avance = Avance(
+                practicante_id=session.get('practicante_id'),
+                descripcion=request.form.get('descripcion'),
+                fecha=datetime.now().strftime('%Y-%m-%d')
+            )
+            db.session.add(avance)
+            db.session.commit()
+            flash('Avance registrado exitosamente', 'success')
+            return redirect(url_for('lista_avances'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error al registrar avance: {str(e)}', 'error')
+    
+    return render_template('form_avance.html')
+
+@app.route('/avance/feedback/<int:id>', methods=['POST'])
+@requiere_login
+@requiere_responsable
+def agregar_feedback(id):
+    avance = Avance.query.get_or_404(id)
+    avance.feedback = request.form.get('feedback')
+    db.session.commit()
+    flash('Feedback agregado correctamente', 'success')
+    return redirect(url_for('lista_avances'))
+
+# Rutas de reportes
+@app.route('/reportes')
+@requiere_login
+@requiere_responsable
+def reportes():
+    activos = Practicante.query.filter_by(estado='Activo').count()
+    finalizados = Practicante.query.filter_by(estado='Finalizado').count()
+    en_espera = Practicante.query.filter_by(estado='En espera').count()
+    
+    avances_recientes = Avance.query.order_by(Avance.fecha.desc()).limit(5).all()
+    
+    return render_template('reportes.html',
+                        activos=activos,
+                        finalizados=finalizados,
+                        en_espera=en_espera,
+                        avances_recientes=avances_recientes)
 
 if __name__ == '__main__':
     app.run(debug=True)
