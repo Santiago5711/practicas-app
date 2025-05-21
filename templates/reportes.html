@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes{% endblock %}
+
+{% block content %}
+<h2>Reportes</h2>
+
+<div style="display: flex; gap: 20px; margin-bottom: 30px;">
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Practicantes Activos</h3>
+        <p style="font-size: 2em; color: #1a73e8;">{{ activos }}</p>
+    </div>
+    
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>Practicantes Finalizados</h3>
+        <p style="font-size: 2em; color: #4caf50;">{{ finalizados }}</p>
+    </div>
+    
+    <div class="card" style="flex: 1; text-align: center;">
+        <h3>En Espera</h3>
+        <p style="font-size: 2em; color: #ff9800;">{{ en_espera }}</p>
+    </div>
+</div>
+
+<h3>Últimos Avances</h3>
+{% for avance in avances_recientes %}
+<div class="card">
+    <h4>{{ avance.fecha }} - {{ avance.practicante.nombre }}</h4>
+    <p>{{ avance.descripcion }}</p>
+    {% if avance.feedback %}
+        <div style="background: #e3f2fd; padding: 10px; border-radius: 4px; margin-top: 10px;">
+            <strong>Feedback:</strong> {{ avance.feedback }}
+        </div>
+    {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
